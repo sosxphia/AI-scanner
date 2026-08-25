@@ -1,0 +1,181 @@
+{
+  "app_name": "AI Camera Scanner",
+  "personality": "7 Dark-First Utility",
+  "personality_one_liner": "A high-tech, tactical command center that values speed, contrast, and raw utility.",
+  "color": {
+    "surface": "#0D0D0D",
+    "onSurface": "#F5F5F5",
+    "surfaceSecondary": "#1A1A1A",
+    "onSurfaceSecondary": "#A3A3A3",
+    "surfaceTertiary": "#262626",
+    "onSurfaceTertiary": "#D4D4D4",
+    "surfaceInverse": "#F5F5F5",
+    "onSurfaceInverse": "#0D0D0D",
+    "brand": "#FF4D00",
+    "brandPrimary": "#FF4D00",
+    "onBrandPrimary": "#FFFFFF",
+    "brandSecondary": "#FF7A40",
+    "onBrandSecondary": "#1A0800",
+    "brandTertiary": "#331000",
+    "onBrandTertiary": "#FF8C4D",
+    "success": "#00D46A",
+    "onSuccess": "#002613",
+    "warning": "#FFC800",
+    "onWarning": "#332800",
+    "error": "#FF1F1F",
+    "onError": "#4D0000",
+    "info": "#737373",
+    "onInfo": "#FFFFFF",
+    "border": "#262626",
+    "borderStrong": "#404040",
+    "divider": "#1A1A1A"
+  },
+  "typography": {
+    "displayFontFamily": "Archivo",
+    "textFontFamily": "IBM Plex Mono",
+    "scale": {
+      "sm": 12,
+      "base": 14,
+      "lg": 16,
+      "xl": 20,
+      "2xl": 24
+    }
+  },
+  "spacing": {
+    "rule": "Dense and intentional. Use structural dividers rather than large empty gaps. Keep metrics tightly grouped.",
+    "xs": 4,
+    "sm": 8,
+    "md": 12,
+    "lg": 16,
+    "xl": 24,
+    "2xl": 32,
+    "3xl": 48
+  },
+  "radius_tokens": {
+    "sm": 4,
+    "md": 8,
+    "lg": 12,
+    "pill": 999
+  },
+  "shadow_tier": "0",
+  "navigation": "stack_only",
+  "icon_set": "Phosphor",
+  "glassmorphism": {
+    "enabled": true,
+    "do's": [
+      "Use heavily tinted frosted glass for the floating left vertical rail over the live camera view.",
+      "Use glassmorphism for the AI confidence overlay results to maintain context of the underlying photo."
+    ],
+    "dont's": [
+      "Do not use glass for text inputs or static data rows on the profile/history screens."
+    ]
+  },
+  "platform_libraries": {
+    "glass": {
+      "ios": "expo-glass-effect",
+      "android": "expo-blur",
+      "low_end_android_fallback": "solid surfaceSecondary"
+    },
+    "image": "expo-image",
+    "blur": "expo-blur",
+    "bottom_sheet": "@gorhom/bottom-sheet",
+    "animation": "react-native-reanimated",
+    "gesture": "react-native-gesture-handler"
+  },
+  "haptics": {
+    "camera_shutter": "ImpactFeedbackStyle.Heavy",
+    "left_rail_tap": "ImpactFeedbackStyle.Light",
+    "scan_complete_real": "NotificationFeedbackType.Success",
+    "scan_complete_ai": "NotificationFeedbackType.Warning"
+  },
+  "screens": [
+    {
+      "name": "Home",
+      "purpose": "Live camera viewfinder with a vertical left navigation rail and bottom capture controls.",
+      "states": {
+        "loading": "Camera initializing skeleton with a subtle crosshair pulse.",
+        "empty": "Camera ready, waiting for capture.",
+        "error": "Camera permission denied message with a high-contrast 'Grant Access' CTA."
+      },
+      "layout": "CRITICAL: Do NOT use a bottom tab bar. Use a full-bleed `expo-camera` as the background. On the LEFT side, float a vertical `expo-blur` rail (pill-shaped, heavily tinted `surfaceSecondary`) containing 4 icons: Profile, History, Help, and Pro Subscription. Position it vertically centered or slightly aligned to the top, respecting `useSafeAreaInsets().left` and `top`. At the bottom center, place a large circular shutter button. At the bottom right, float a small gallery upload button. The camera feed is the absolute hero here."
+    },
+    {
+      "name": "ScanResult",
+      "purpose": "Overlays the captured image with a tactical, high-tech AI detection confidence reading.",
+      "states": {
+        "loading": "Simulated scanning animation (horizontal laser line looping over the image) with monospace 'ANALYZING...' text.",
+        "empty": "N/A",
+        "error": "Failed to analyze image; retry button."
+      },
+      "layout": "The captured image remains full-bleed. Overlay a dark gradient scrim (top-to-bottom). In the center or lower-third, display the verdict using large condensed display typography (e.g., 'AI DETECTED 94%'). If AI, use `brandPrimary` (Neon Orange). If Real, use `success` (Matrix Green). Under the verdict, show a technical monospace breakdown of 'Confidence factors' or 'Model: Claude 3.5 Sonnet' in a frosted glass card. Include a 'Back to Scanner' floating button at the top-left or bottom-center."
+    },
+    {
+      "name": "ScanHistory",
+      "purpose": "A dense, utilitarian list of past scans with thumbnail, verdict, and timestamp.",
+      "states": {
+        "loading": "Skeleton list of raw data rows.",
+        "empty": "No scans yet. Matrix-style terminal text: 'LOG EMPTY_'.",
+        "error": "Could not fetch history."
+      },
+      "layout": "A stacked, dense list. Use `surfaceSecondary` for rows. Left side of row: small square image thumbnail. Right side: Monospace timestamp (top), bold verdict tag using `brandPrimary` or `success` (bottom). Use 1px `border` dividers between rows instead of gaps. Dark, sharp, and highly scannable."
+    },
+    {
+      "name": "Profile",
+      "purpose": "Account settings and Google Login state.",
+      "states": {
+        "loading": "Spinner.",
+        "empty": "Logged out state showing Google social login button.",
+        "error": "Auth failed."
+      },
+      "layout": "Use a stark, command-center layout. Avatar at the top inside a `brandTertiary` container. A prominent 'Sign in with Google' button with the Google logo PNG. Settings are dense list rows with right chevrons. Minimal fluff, pure utility."
+    },
+    {
+      "name": "Subscription",
+      "purpose": "RevenueCat paywall to unlock Pro features ($9.99/mo or $79.99/yr).",
+      "states": {
+        "loading": "Loading subscription tiers.",
+        "empty": "Ready to upgrade.",
+        "error": "Could not load products."
+      },
+      "layout": "A cinematic, dark overlay. Use an abstract digital texture background. A large 'PRO' badge. Two large toggleable cards for Monthly and Annual plans. The selected plan uses a `brandPrimary` 1.5pt border outline. A large sticky primary CTA ('UPGRADE TO PRO') at the bottom thumb zone."
+    },
+    {
+      "name": "Help",
+      "purpose": "FAQ and how the AI detection works.",
+      "states": {
+        "loading": "Loading...",
+        "empty": "N/A",
+        "error": "Error loading content."
+      },
+      "layout": "Editorial but technical. Monospace headers for questions, readable body text for answers. Use high contrast and structural dividers."
+    }
+  ],
+  "images": {
+    "camera_background_mock": {
+      "url": "https://images.unsplash.com/photo-1780969393116-5a48dcbb4cea?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2MzR8MHwxfHNlYXJjaHwyfHx1cmJhbiUyMHN0cmVldCUyMHNjZW5lJTIwcG9ydHJhaXQlMjBwaG90b2dyYXBoeXxlbnwwfHx8fDE3ODc2NjQ1MjB8MA&ixlib=rb-4.1.0&q=85",
+      "alt": "Woman walking across a sunny city street, used as camera viewfinder mock"
+    },
+    "subscription_background": {
+      "url": "https://images.unsplash.com/photo-1633098096956-afdc8bcc8552?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzZ8MHwxfHNlYXJjaHwyfHxkaWdpdGFsJTIwYWJzdHJhY3QlMjB0ZXh0dXJlJTIwdGVjaG5vbG9neSUyMGJhY2tncm91bmR8ZW58MHx8fHwxNzg3NjY0NTIwfDA&ixlib=rb-4.1.0&q=85",
+      "alt": "Digital abstract texture technology background"
+    },
+    "google_logo": {
+      "url": "https://images.unsplash.com/photo-1662947190722-5d272f82a526?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2MTJ8MHwxfHNlYXJjaHwxfHxnb29nbGUlMjBsb2dvJTIwdHJhbnNwYXJlbnQlMjBwbmd8ZW58MHx8fHwxNzg3NjY0NTM0fDA&ixlib=rb-4.1.0&q=85",
+      "alt": "Google logo"
+    },
+    "claude_logo": {
+      "url": "https://images.unsplash.com/photo-1781323924883-f94c88eb7e49?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2ODl8MHwxfHNlYXJjaHwxfHxjbGF1ZGUlMjBhbnRocm9waWMlMjBsb2dvJTIwdHJhbnNwYXJlbnQlMjBwbmd8ZW58MHx8fHwxNzg3NjY0NTM1fDA&ixlib=rb-4.1.0&q=85",
+      "alt": "Claude anthropic logo"
+    }
+  },
+  "instructions_to_main_agent": [
+    "Strictly follow the Dark-First Utility personality: use pure Obsidian backgrounds (#0D0D0D) with strong Ember/Neon Orange (#FF4D00) accents. Avoid generic grays or standard blue tints entirely.",
+    "CRITICAL LAYOUT REQUIREMENT: On the Home Screen, DO NOT implement a standard bottom tab bar. The home screen MUST be a full-bleed camera view. Create a floating `vertical_rail` on the left edge of the screen using `expo-blur`. Place the 4 requested tabs (Profile, History, Help, Subscription) as stacked icons inside this floating vertical pill.",
+    "Ensure the Capture button is absolute positioned at the bottom center of the Home screen, and the Gallery upload button at the bottom right.",
+    "Use Archivo for large display metrics and percentages on the ScanResult screen, and IBM Plex Mono for technical logs, timestamps, and confidence factors.",
+    "For the AI Result, emphasize 'Probabilistic-UI': show a scanning animation first, then a clear bold verdict ('AI DETECTED' in brandPrimary, 'REAL' in success) over a heavy dark gradient scrim.",
+    "Implement the Google social login button on the Profile screen using the exact provided Google logo image.",
+    "Embed subtle haptics: heavy impact on camera shutter, light impact on side rail taps, and success/warning feedback on scan completion based on the verdict.",
+    "Do not use emojis anywhere in the app interface."
+  ]
+}

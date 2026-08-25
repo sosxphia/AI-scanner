@@ -1,0 +1,43 @@
+{
+  "summary": "Fresh MVP first test run. Backend: 14/14 pytest tests passed covering /api/scan (anonymous + authenticated), /api/scans, /api/scans/stats, /api/files/{path} (with token query + bearer), /api/auth/me and /api/auth/session. Frontend: All rail testIDs (rail-profile-button, rail-history-button, rail-help-button, rail-subscription-button), shutter-button, gallery-upload-button, flip-camera-button, camera-permission-button render on camera home. Camera permission screen renders as expected in headless. Help, History (logged-out with SIGN IN REQUIRED + history-google-signin-button), Profile (profile-google-signin-button), and Subscription screens all render with correct testIDs. RevenueCat Test Store returned live packages: plan-card-monthly ($9.99), plan-card-annual ($79.99), subscription-signin-button, simulated-purchase-note all present. End-to-end scan flow via /result?uri=<dataURI> succeeded: analyzing-label appeared, then verdict-label='AI GENERATED', confidence-value='95%', scan-summary, sign-in-save-hint (anonymous), and scan-again-button rendered. No React Native red-screen errors. Deprecated packages detected: none. Only benign runtime warnings: 'shadow* style props deprecated - use boxShadow' and 'props.pointerEvents is deprecated - use style.pointerEvents' — likely from react-native-web upgrade; non-blocking.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": [
+      {"component": "styles (multiple)", "issue": "Runtime warning: '\"shadow*\" style props are deprecated. Use \"boxShadow\".' Emitted on every screen. Consider migrating shadow* props to boxShadow (or platform-gated) to silence warnings on react-native-web."},
+      {"component": "index.tsx crosshair View", "issue": "Runtime warning: 'props.pointerEvents is deprecated. Use style.pointerEvents'. Reference: /app/frontend/app/index.tsx:136 (topBar) uses pointerEvents='none' as prop; move into style.pointerEvents for RN 0.79+/web parity."}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "(Optional/polish) Migrate shadow*/pointerEvents props to their non-deprecated equivalents to silence console warnings on web.",
+    "(Optional) Consider adding a stable back-button testID for the help screen (currently no help-back-button testID; header back arrow works but has no testID for automation)."
+  ],
+  "critical_code_review_comments": [
+    "server.py is a single ~310-line file — well within limits; good separation of auth, scan, storage helpers.",
+    "Object storage init failure is logged but does not fail startup — good graceful degradation.",
+    "MongoDB _id is correctly excluded in all response projections (projection={'_id': 0}) — good.",
+    "Auth uses Bearer session_token with 7-day expiry TTL index (expireAfterSeconds=0) — correct.",
+    "/api/scan validates size (15MB) and MIME whitelist (jpeg/png/webp) — matches image_testing.md rules.",
+    "Anonymous scan correctly does NOT store to db.scans and returns saved=false — verified by test."
+  ],
+  "updated_files": [
+    "/app/backend/tests/backend_test.py (new)",
+    "/app/test_reports/iteration_1.json (new)",
+    "/app/test_reports/pytest/pytest_results.xml (new)"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "Test user + user_sessions doc were inserted programmatically into MongoDB (db=test_database) via a session-scoped pytest fixture (user_id=user_TEST_*, session_token=TEST_token_*). Fixture teardown deletes users/user_sessions/scans for that user_id.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend pytest suite lives at /app/backend/tests/backend_test.py — reuse it. To re-run: `pytest /app/backend/tests/backend_test.py -v -o addopts='' --junitxml=/app/test_reports/pytest/pytest_results.xml` (override the -n xdist default from /app/backend/pytest.ini otherwise files-endpoint tests get SKIPPED because saved_image_path is set on a different worker). Frontend gallery-upload-button on web does not surface a persistent <input type=file> — use direct navigation to /result?uri=<url-encoded data:image/jpeg;base64,...>&mime=image/jpeg to exercise the scan flow. LLM scan takes ~8-15s; use timeouts of 45-60s in tests.",
+  "rca_of_issue": "N/A — all flows working."
+}
