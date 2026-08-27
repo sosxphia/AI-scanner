@@ -34,11 +34,11 @@ const queryClient = new QueryClient();
 export default function RootLayout() {
   const [iconsLoaded, iconsError] = useIconFonts();
   const [fontsLoaded, fontsError] = useFonts({
-    "Archivo-Bold": require("../assets/fonts/Archivo-Bold.ttf"),
-    "Archivo-Black": require("../assets/fonts/Archivo-Black.ttf"),
-    PlexMono: require("../assets/fonts/IBMPlexMono-Regular.ttf"),
-    "PlexMono-Medium": require("../assets/fonts/IBMPlexMono-Medium.ttf"),
-    "PlexMono-SemiBold": require("../assets/fonts/IBMPlexMono-SemiBold.ttf"),
+    "SFPro-Bold": require("../assets/fonts/SF-Pro-Display-Bold.otf"),
+    "SFPro-Heavy": require("../assets/fonts/SF-Pro-Display-Heavy.otf"),
+    "SFPro-Regular": require("../assets/fonts/SF-Pro-Text-Regular.otf"),
+    "SFPro-Medium": require("../assets/fonts/SF-Pro-Text-Medium.otf"),
+    "SFPro-Semibold": require("../assets/fonts/SF-Pro-Text-Semibold.otf"),
   });
 
   const ready = (iconsLoaded || !!iconsError) && (fontsLoaded || !!fontsError);

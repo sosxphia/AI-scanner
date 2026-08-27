@@ -35,6 +35,7 @@ export default function CameraHome() {
   const insets = useSafeAreaInsets();
   const [permission, requestPermission] = useCameraPermissions();
   const [capturing, setCapturing] = useState(false);
+  const [flash, setFlash] = useState<"off" | "on">("off");
   const [menuOpen, setMenuOpen] = useState(false);
   const cameraRef = useRef<CameraView>(null);
 
@@ -124,7 +125,7 @@ export default function CameraHome() {
       );
     }
     return (
-      <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing="back">
+      <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing="back" flash={flash}>
         <View style={styles.reticle} pointerEvents="none">
           <View style={styles.reticleBox}>
             <View style={[styles.corner, styles.cornerTL]} />
@@ -204,7 +205,7 @@ export default function CameraHome() {
         <Pressable
           testID="gallery-upload-button"
           onPress={pickFromGallery}
-          style={styles.galleryLeft}
+          style={styles.sideButton}
           hitSlop={12}
         >
           <Ionicons name="images-outline" size={26} color={colors.onSurface} />
@@ -219,6 +220,22 @@ export default function CameraHome() {
           <View style={styles.shutterInner}>
             {capturing && <ActivityIndicator color="#FFFFFF" />}
           </View>
+        </Pressable>
+
+        <Pressable
+          testID="flash-toggle-button"
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            setFlash((f) => (f === "off" ? "on" : "off"));
+          }}
+          style={styles.sideButton}
+          hitSlop={12}
+        >
+          <Ionicons
+            name={flash === "on" ? "flash" : "flash-off"}
+            size={26}
+            color={flash === "on" ? colors.brand : colors.onSurface}
+          />
         </Pressable>
       </View>
     </View>
@@ -376,10 +393,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    gap: spacing.xl,
   },
-  galleryLeft: {
-    position: "absolute",
-    left: spacing.xxl,
+  sideButton: {
     width: 52,
     height: 52,
     alignItems: "center",

@@ -19,11 +19,11 @@ export const colors = {
 };
 
 export const fonts = {
-  display: "Archivo-Bold",
-  displayHeavy: "Archivo-Black",
-  mono: "PlexMono",
-  monoMedium: "PlexMono-Medium",
-  monoSemiBold: "PlexMono-SemiBold",
+  display: "SFPro-Bold",
+  displayHeavy: "SFPro-Heavy",
+  mono: "SFPro-Regular",
+  monoMedium: "SFPro-Medium",
+  monoSemiBold: "SFPro-Semibold",
 };
 
 export const spacing = {
