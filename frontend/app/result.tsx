@@ -49,6 +49,7 @@ export default function ResultScreen() {
   const [status, setStatus] = useState<"analyzing" | "done" | "error">("analyzing");
   const [result, setResult] = useState<ScanResult | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
+  const [limitHit, setLimitHit] = useState(false);
   const [sharing, setSharing] = useState(false);
   const shareCardRef = useRef<View>(null);
 
@@ -74,6 +75,7 @@ export default function ResultScreen() {
       return;
     }
     setStatus("analyzing");
+    setLimitHit(false);
     try {
       const type = mime || "image/jpeg";
       const name = `scan.${type.includes("png") ? "png" : type.includes("webp") ? "webp" : "jpg"}`;
@@ -96,6 +98,13 @@ export default function ResultScreen() {
       });
       if (!res.ok) {
         const body = await res.json().catch(() => null);
+        if (res.status === 429) {
+          setLimitHit(true);
+          setErrorMsg(body?.detail || "Daily scan limit reached on this device.");
+          setStatus("error");
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+          return;
+        }
         throw new Error(body?.detail || `Analysis failed (${res.status})`);
       }
       const data: ScanResult = await res.json();
@@ -172,7 +181,37 @@ export default function ResultScreen() {
         </>
       )}
 
-      {status === "error" && (
+      {status === "error" && limitHit && (
+        <View style={[styles.centerWrap, { paddingBottom: insets.bottom + spacing.xl }]}>
+          <View style={styles.limitIcon}>
+            <Ionicons name="hourglass-outline" size={40} color={colors.brand} />
+          </View>
+          <Text style={styles.errorTitle}>DAILY LIMIT REACHED</Text>
+          <Text style={styles.errorBody} testID="scan-limit-message">
+            You&apos;ve used all your free scans on this device for today. Your limit resets tomorrow.
+          </Text>
+          <View style={styles.proNote}>
+            <Ionicons name="diamond-outline" size={16} color={colors.brand} />
+            <Text style={styles.proNoteText}>Go Pro for unlimited scans — no daily limits.</Text>
+          </View>
+          <Pressable
+            testID="limit-upgrade-button"
+            style={styles.primaryBtn}
+            onPress={() => router.replace("/subscription")}
+          >
+            <Text style={styles.primaryBtnText}>UPGRADE TO PRO</Text>
+          </Pressable>
+          <Pressable
+            testID="limit-back-to-scanner-button"
+            style={styles.ghostBtn}
+            onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))}
+          >
+            <Text style={styles.ghostBtnText}>BACK TO SCANNER</Text>
+          </Pressable>
+        </View>
+      )}
+
+      {status === "error" && !limitHit && (
         <View style={[styles.centerWrap, { paddingBottom: insets.bottom + spacing.xl }]}>
           <Ionicons name="warning-outline" size={44} color={colors.error} />
           <Text style={styles.errorTitle}>SCAN FAILED</Text>
@@ -356,6 +395,31 @@ const styles = StyleSheet.create({
     color: colors.onSurfaceSecondary,
     textAlign: "center",
   },
+  limitIcon: {
+    width: 88,
+    height: 88,
+    borderRadius: radius.lg,
+    backgroundColor: colors.brandTertiary,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: spacing.sm,
+  },
+  proNote: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    backgroundColor: colors.brandTertiary,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    marginVertical: spacing.sm,
+  },
+  proNoteText: {
+    fontFamily: fonts.monoMedium,
+    fontSize: 12,
+    letterSpacing: 0.5,
+    color: colors.onBrandTertiary,
+  },
   resultWrap: {
     flex: 1,
     justifyContent: "flex-end",
@@ -434,6 +498,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.brand,
     borderRadius: radius.md,
     minHeight: 52,
+    paddingHorizontal: spacing.xxl,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -448,6 +513,7 @@ const styles = StyleSheet.create({
     borderColor: colors.borderStrong,
     borderRadius: radius.md,
     minHeight: 48,
+    paddingHorizontal: spacing.xl,
     flexDirection: "row",
     gap: spacing.sm,
     alignItems: "center",
