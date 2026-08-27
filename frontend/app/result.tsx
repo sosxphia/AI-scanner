@@ -141,7 +141,7 @@ export default function ResultScreen() {
             <Text style={styles.analyzingText} testID="analyzing-label">
               ANALYZING_
             </Text>
-            <Text style={styles.analyzingSub}>FORENSIC MODEL · CLAUDE SONNET 4.6</Text>
+            <Text style={styles.analyzingSub}>SCANNING...</Text>
           </View>
         </>
       )}

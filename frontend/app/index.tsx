@@ -17,17 +17,17 @@ import * as Haptics from "expo-haptics";
 
 import { colors, fonts, radius, spacing } from "@/src/theme";
 
-type RailItem = {
+type MenuItem = {
   icon: keyof typeof Ionicons.glyphMap;
+  label: string;
   route: string;
   testID: string;
 };
 
-const RAIL_ITEMS: RailItem[] = [
-  { icon: "person-outline", route: "/profile", testID: "rail-profile-button" },
-  { icon: "time-outline", route: "/history", testID: "rail-history-button" },
-  { icon: "help-circle-outline", route: "/help", testID: "rail-help-button" },
-  { icon: "diamond-outline", route: "/subscription", testID: "rail-subscription-button" },
+const MENU_ITEMS: MenuItem[] = [
+  { icon: "person-outline", label: "Profile", route: "/profile", testID: "rail-profile-button" },
+  { icon: "time-outline", label: "History", route: "/history", testID: "rail-history-button" },
+  { icon: "diamond-outline", label: "Pro", route: "/subscription", testID: "rail-subscription-button" },
 ];
 
 export default function CameraHome() {
@@ -36,11 +36,18 @@ export default function CameraHome() {
   const [permission, requestPermission] = useCameraPermissions();
   const [facing, setFacing] = useState<"back" | "front">("back");
   const [capturing, setCapturing] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const cameraRef = useRef<CameraView>(null);
 
   const openRoute = (route: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setMenuOpen(false);
     router.push(route as never);
+  };
+
+  const toggleMenu = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setMenuOpen((o) => !o);
   };
 
   const capture = async () => {
@@ -133,25 +140,62 @@ export default function CameraHome() {
     <View style={styles.container} testID="camera-home-screen">
       {renderCameraArea()}
 
-      {/* Left vertical rail */}
-      <View style={[styles.railWrap, { left: Math.max(insets.left, spacing.md) }]}>
-        <BlurView intensity={40} tint="dark" style={styles.rail}>
-          {RAIL_ITEMS.map((item) => (
-            <Pressable
-              key={item.route}
-              testID={item.testID}
-              onPress={() => openRoute(item.route)}
-              style={styles.railButton}
-              hitSlop={6}
-            >
-              <Ionicons
-                name={item.icon}
-                size={22}
-                color={item.route === "/subscription" ? colors.brand : colors.onSurface}
-              />
-            </Pressable>
-          ))}
-        </BlurView>
+      {/* Top-left dropdown menu */}
+      <View style={[styles.topLeft, { top: insets.top + spacing.sm, left: Math.max(insets.left, spacing.md) }]}>
+        <Pressable
+          testID="menu-toggle-button"
+          onPress={toggleMenu}
+          style={styles.iconChipWrap}
+          hitSlop={8}
+        >
+          <BlurView intensity={40} tint="dark" style={styles.iconChip}>
+            <Ionicons name={menuOpen ? "close" : "menu"} size={24} color={colors.onSurface} />
+          </BlurView>
+        </Pressable>
+
+        {menuOpen && (
+          <View style={styles.dropdown} testID="menu-dropdown">
+            <BlurView intensity={40} tint="dark" style={styles.dropdownInner}>
+              {MENU_ITEMS.map((item, idx) => (
+                <Pressable
+                  key={item.route}
+                  testID={item.testID}
+                  onPress={() => openRoute(item.route)}
+                  style={[styles.dropdownItem, idx < MENU_ITEMS.length - 1 && styles.dropdownItemBorder]}
+                  hitSlop={4}
+                >
+                  <Ionicons
+                    name={item.icon}
+                    size={20}
+                    color={item.route === "/subscription" ? colors.brand : colors.onSurface}
+                  />
+                  <Text
+                    style={[
+                      styles.dropdownLabel,
+                      item.route === "/subscription" && { color: colors.brand },
+                    ]}
+                  >
+                    {item.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </BlurView>
+          </View>
+        )}
+      </View>
+
+      {/* Top-right help button */}
+      <View style={[styles.topRight, { top: insets.top + spacing.sm, right: Math.max(insets.right, spacing.md) }]}>
+        <Pressable
+          testID="rail-help-button"
+          onPress={() => openRoute("/help")}
+          style={styles.iconChipWrap}
+          hitSlop={8}
+        >
+          <BlurView intensity={40} tint="dark" style={styles.iconChip}>
+            <Ionicons name="help-circle-outline" size={24} color={colors.onSurface} />
+          </BlurView>
+        </Pressable>
       </View>
 
       {/* Bottom controls */}
@@ -201,8 +245,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     alignItems: "center",
     justifyContent: "center",
-    paddingLeft: 84,
-    paddingRight: spacing.xl,
+    paddingHorizontal: spacing.xl,
     backgroundColor: colors.surface,
   },
   permTitle: {
@@ -278,26 +321,58 @@ const styles = StyleSheet.create({
     borderRightWidth: 2,
     borderBottomRightRadius: 6,
   },
-  railWrap: {
+  topLeft: {
     position: "absolute",
-    top: 0,
-    bottom: 0,
-    justifyContent: "center",
+    alignItems: "flex-start",
   },
-  rail: {
+  topRight: {
+    position: "absolute",
+    alignItems: "flex-end",
+  },
+  iconChipWrap: {
     borderRadius: radius.pill,
+  },
+  iconChip: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     overflow: "hidden",
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xs,
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: "rgba(26,26,26,0.55)",
     borderWidth: 1,
     borderColor: "rgba(64,64,64,0.5)",
   },
-  railButton: {
-    width: 48,
-    height: 48,
+  dropdown: {
+    marginTop: spacing.sm,
+    borderRadius: radius.lg,
+    overflow: "hidden",
+    minWidth: 168,
+  },
+  dropdownInner: {
+    backgroundColor: "rgba(26,26,26,0.75)",
+    borderWidth: 1,
+    borderColor: "rgba(64,64,64,0.5)",
+    borderRadius: radius.lg,
+    overflow: "hidden",
+  },
+  dropdownItem: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    gap: spacing.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    minHeight: 48,
+  },
+  dropdownItemBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(64,64,64,0.4)",
+  },
+  dropdownLabel: {
+    fontFamily: fonts.monoSemiBold,
+    fontSize: 14,
+    letterSpacing: 1,
+    color: colors.onSurface,
   },
   bottomControls: {
     position: "absolute",
