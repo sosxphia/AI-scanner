@@ -16,7 +16,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 
 import { colors, fonts, radius, spacing } from "@/src/theme";
-import { useSubscription } from "@/src/lib/revenuecat";
 
 type RailItem = {
   icon: keyof typeof Ionicons.glyphMap;
@@ -38,7 +37,6 @@ export default function CameraHome() {
   const [facing, setFacing] = useState<"back" | "front">("back");
   const [capturing, setCapturing] = useState(false);
   const cameraRef = useRef<CameraView>(null);
-  const { isSubscribed } = useSubscription();
 
   const openRoute = (route: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -121,8 +119,11 @@ export default function CameraHome() {
     }
     return (
       <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing={facing}>
-        <View style={styles.crosshair} pointerEvents="none">
-          <Ionicons name="scan-outline" size={220} color="rgba(245,245,245,0.14)" />
+        <View style={styles.reticle} pointerEvents="none">
+          <View style={[styles.corner, styles.cornerTL]} />
+          <View style={[styles.corner, styles.cornerTR]} />
+          <View style={[styles.corner, styles.cornerBL]} />
+          <View style={[styles.corner, styles.cornerBR]} />
         </View>
       </CameraView>
     );
@@ -131,16 +132,6 @@ export default function CameraHome() {
   return (
     <View style={styles.container} testID="camera-home-screen">
       {renderCameraArea()}
-
-      {/* Top label */}
-      <View style={[styles.topBar, { top: insets.top + spacing.sm }]} pointerEvents="none">
-        <Text style={styles.topLabel}>DETECT·AI</Text>
-        {isSubscribed && (
-          <View style={styles.proBadge}>
-            <Text style={styles.proBadgeText}>PRO</Text>
-          </View>
-        )}
-      </View>
 
       {/* Left vertical rail */}
       <View style={[styles.railWrap, { left: Math.max(insets.left, spacing.md) }]}>
@@ -171,11 +162,10 @@ export default function CameraHome() {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             setFacing((f) => (f === "back" ? "front" : "back"));
           }}
-          style={styles.sideButtonWrap}
+          style={styles.sideButton}
+          hitSlop={12}
         >
-          <BlurView intensity={40} tint="dark" style={styles.sideButton}>
-            <Ionicons name="camera-reverse-outline" size={22} color={colors.onSurface} />
-          </BlurView>
+          <Ionicons name="camera-reverse-outline" size={26} color={colors.onSurface} />
         </Pressable>
 
         <Pressable
@@ -184,15 +174,18 @@ export default function CameraHome() {
           disabled={!permission?.granted || capturing}
           style={({ pressed }) => [styles.shutterOuter, pressed && { transform: [{ scale: 0.94 }] }]}
         >
-          <View style={[styles.shutterInner, capturing && { backgroundColor: colors.brand }]}>
+          <View style={styles.shutterInner}>
             {capturing && <ActivityIndicator color="#FFFFFF" />}
           </View>
         </Pressable>
 
-        <Pressable testID="gallery-upload-button" onPress={pickFromGallery} style={styles.sideButtonWrap}>
-          <BlurView intensity={40} tint="dark" style={styles.sideButton}>
-            <Ionicons name="images-outline" size={22} color={colors.onSurface} />
-          </BlurView>
+        <Pressable
+          testID="gallery-upload-button"
+          onPress={pickFromGallery}
+          style={styles.sideButton}
+          hitSlop={12}
+        >
+          <Ionicons name="images-outline" size={26} color={colors.onSurface} />
         </Pressable>
       </View>
     </View>
@@ -247,32 +240,43 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  topBar: {
+  reticle: {
+    ...StyleSheet.absoluteFillObject,
+    margin: "18%",
+  },
+  corner: {
     position: "absolute",
+    width: 34,
+    height: 34,
+    borderColor: "rgba(255,31,31,0.55)",
+  },
+  cornerTL: {
+    top: 0,
     left: 0,
+    borderTopWidth: 2,
+    borderLeftWidth: 2,
+    borderTopLeftRadius: 6,
+  },
+  cornerTR: {
+    top: 0,
     right: 0,
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: spacing.sm,
+    borderTopWidth: 2,
+    borderRightWidth: 2,
+    borderTopRightRadius: 6,
   },
-  topLabel: {
-    fontFamily: fonts.monoSemiBold,
-    fontSize: 13,
-    letterSpacing: 4,
-    color: colors.onSurface,
+  cornerBL: {
+    bottom: 0,
+    left: 0,
+    borderBottomWidth: 2,
+    borderLeftWidth: 2,
+    borderBottomLeftRadius: 6,
   },
-  proBadge: {
-    backgroundColor: colors.brand,
-    borderRadius: radius.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-  },
-  proBadgeText: {
-    fontFamily: fonts.monoSemiBold,
-    fontSize: 10,
-    color: "#FFFFFF",
-    letterSpacing: 1,
+  cornerBR: {
+    bottom: 0,
+    right: 0,
+    borderBottomWidth: 2,
+    borderRightWidth: 2,
+    borderBottomRightRadius: 6,
   },
   railWrap: {
     position: "absolute",
@@ -305,34 +309,27 @@ const styles = StyleSheet.create({
     gap: spacing.xxl,
   },
   shutterOuter: {
-    width: 78,
-    height: 78,
-    borderRadius: 39,
-    borderWidth: 4,
-    borderColor: "#FFFFFF",
+    width: 62,
+    height: 62,
+    borderRadius: 31,
+    backgroundColor: "rgba(255,31,31,0.28)",
+    borderWidth: 2,
+    borderColor: "rgba(255,31,31,0.45)",
     alignItems: "center",
     justifyContent: "center",
   },
   shutterInner: {
-    width: 62,
-    height: 62,
-    borderRadius: 31,
-    backgroundColor: "#FFFFFF",
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: "#FF1F1F",
     alignItems: "center",
     justifyContent: "center",
-  },
-  sideButtonWrap: {
-    borderRadius: radius.pill,
   },
   sideButton: {
     width: 52,
     height: 52,
-    borderRadius: 26,
-    overflow: "hidden",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(26,26,26,0.55)",
-    borderWidth: 1,
-    borderColor: "rgba(64,64,64,0.5)",
   },
 });
