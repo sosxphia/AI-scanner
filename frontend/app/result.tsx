@@ -27,7 +27,7 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { colors, fonts, radius, spacing } from "@/src/theme";
-import { BACKEND_URL, getAuthToken } from "@/src/lib/api";
+import { BACKEND_URL, getAuthToken, getDeviceId } from "@/src/lib/api";
 import { useAuth } from "@/src/lib/auth";
 
 type ScanResult = {
@@ -87,6 +87,7 @@ export default function ResultScreen() {
       const headers: Record<string, string> = {};
       const token = getAuthToken();
       if (token) headers.Authorization = `Bearer ${token}`;
+      headers["X-Device-Id"] = await getDeviceId();
 
       const res = await fetch(`${BACKEND_URL}/api/scan`, {
         method: "POST",

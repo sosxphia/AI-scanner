@@ -11,11 +11,12 @@ from typing import Optional
 import httpx
 import requests
 from dotenv import load_dotenv
-from fastapi import FastAPI, APIRouter, Request, HTTPException, UploadFile, File, Query
+from fastapi import FastAPI, APIRouter, Request, HTTPException, UploadFile, File
 from fastapi.responses import Response
 from starlette.middleware.cors import CORSMiddleware
 from starlette.concurrency import run_in_threadpool
 from motor.motor_asyncio import AsyncIOMotorClient
+from pymongo import ReturnDocument
 from pydantic import BaseModel
 from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
 
@@ -92,6 +93,45 @@ async def require_user(request: Request) -> dict:
     if not user:
         raise HTTPException(status_code=401, detail="Not authenticated")
     return user
+
+
+# ---------- Abuse controls ----------
+SCAN_DAILY_LIMIT = 50  # per device/IP per day — generous for real users, blocks scripted abuse
+
+
+def client_identity(request: Request) -> str:
+    dev = (request.headers.get("X-Device-Id") or "").strip()
+    if dev:
+        return f"dev:{dev[:64]}"
+    xff = request.headers.get("x-forwarded-for", "")
+    ip = xff.split(",")[0].strip() if xff else (request.client.host if request.client else "unknown")
+    return f"ip:{ip}"
+
+
+async def enforce_scan_quota(request: Request) -> None:
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    doc_id = f"{today}:{client_identity(request)}"
+    doc = await db.rate_limits.find_one_and_update(
+        {"_id": doc_id},
+        {"$inc": {"count": 1}, "$setOnInsert": {"created_at": datetime.now(timezone.utc)}},
+        upsert=True,
+        return_document=ReturnDocument.AFTER,
+    )
+    if doc.get("count", 0) > SCAN_DAILY_LIMIT:
+        raise HTTPException(
+            status_code=429,
+            detail="Daily scan limit reached on this device. Please try again tomorrow.",
+        )
+
+
+def sniff_image_mime(raw: bytes) -> Optional[str]:
+    if raw[:3] == b"\xff\xd8\xff":
+        return "image/jpeg"
+    if raw[:8] == b"\x89PNG\r\n\x1a\n":
+        return "image/png"
+    if raw[:4] == b"RIFF" and raw[8:12] == b"WEBP":
+        return "image/webp"
+    return None
 
 
 class SessionIdBody(BaseModel):
@@ -183,15 +223,16 @@ def parse_scan_response(text: str) -> dict:
 
 @api_router.post("/scan")
 async def scan_image(request: Request, file: UploadFile = File(...)):
+    await enforce_scan_quota(request)
     user = await get_user_optional(request)
     raw = await file.read()
     if not raw:
         raise HTTPException(status_code=400, detail="Empty file")
     if len(raw) > 15 * 1024 * 1024:
         raise HTTPException(status_code=413, detail="Image too large (max 15MB)")
-    mime = file.content_type or "image/jpeg"
-    if mime not in ("image/jpeg", "image/jpg", "image/png", "image/webp"):
-        mime = "image/jpeg"
+    mime = sniff_image_mime(raw)
+    if not mime:
+        raise HTTPException(status_code=400, detail="Unsupported file type (JPEG, PNG, or WEBP only)")
 
     b64 = base64.b64encode(raw).decode()
     chat = LlmChat(
@@ -253,12 +294,8 @@ async def scan_stats(request: Request):
 
 
 @api_router.get("/files/{path:path}")
-async def serve_file(path: str, request: Request, token: Optional[str] = Query(None)):
-    user = await get_user_optional(request)
-    if not user and token:
-        user = await user_from_token(token)
-    if not user:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+async def serve_file(path: str, request: Request):
+    user = await require_user(request)
     scan = await db.scans.find_one({"image_path": path, "user_id": user["user_id"]}, {"_id": 0})
     if not scan:
         raise HTTPException(status_code=404, detail="File not found")
@@ -279,8 +316,8 @@ app.include_router(api_router)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_credentials=True,
-    allow_origins=["*"],
+    allow_origin_regex=r"https?://(localhost(:\d+)?|([a-z0-9-]+\.)*emergentagent\.com)",
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -295,6 +332,7 @@ async def startup():
         await db.user_sessions.create_index("user_id")
         await db.user_sessions.create_index("expires_at", expireAfterSeconds=0)
         await db.scans.create_index([("user_id", 1), ("created_at", -1)])
+        await db.rate_limits.create_index("created_at", expireAfterSeconds=172800)
     except Exception as e:
         logger.warning(f"Index creation failed: {e}")
     try:

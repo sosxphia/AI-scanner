@@ -1,0 +1,43 @@
+{
+  "summary": "Security-fix verification (SEC-001 rate limit, SEC-002 remove ?token= from /api/files, CORS hardening, magic-byte validation). 23/23 pytest tests passed. Verified: (1) POST /api/scan rejects non-image bytes with 400 via magic-byte sniff (text-bytes-as-jpeg and GIF both blocked pre-LLM); (2) X-Device-Id header is accepted on /api/scan and returns a normal 200; 429 shape verified WITHOUT exhausting real 50/day budget by pre-seeding rate_limits doc to 9999 for a synthetic device — real Claude spend was 3 scans total; (3) GET /api/files/{path} returns 401 without Authorization, 401 when using the old ?token=<value> query param (SEC-002 confirmed), 404 for a path owned by another user with a valid Bearer, and 200 with correct Bearer+owner; (4) CORS: at direct-backend level allow_origin_regex correctly echoes emergentagent.com + localhost origins, rejects disallowed origins (no allow-origin header), and NEVER pairs allow-origin='*' with allow-credentials='true'. Note: Cloudflare/K8s ingress rewrites OPTIONS-preflight CORS on the public preview URL to 'access-control-allow-origin: *' with no credentials header — this is infra-layer behavior and is not a security regression (credentials disabled means browsers won't send cookies with '*'). Regressions all green: /api/auth/me 401 without token, /api/auth/session 401 for bogus session_id, /api/scans and /api/scans/stats 401 without token.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "OPTIONS /api/* (via public URL)", "issue": "Cloudflare/K8s ingress overrides Starlette CORS on OPTIONS preflights, returning 'access-control-allow-origin: *' regardless of Origin (server: cloudflare, cf-ray present). Not a security regression because 'access-control-allow-credentials' is not set (verified). The backend itself correctly echoes only allow-listed origins (verified via direct localhost:8001 hit). No action required unless strict origin echo is desired on the public URL — that would need ingress config, not backend code."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Frontend: verify /app/frontend/src/lib/api.ts no longer builds ?token=<...> URLs for /api/files — it must now use Authorization: Bearer <token> only. Check /app/frontend/app/result.tsx and /app/frontend/app/history.tsx image rendering paths (they need to load images via authenticated fetch/blob, not <Image source={{ uri }} /> with a naked file URL). This is a follow-up client-side change implied by SEC-002.",
+    "Optional: expose the daily scan quota headers (e.g., X-RateLimit-Remaining) so the client can show a friendly banner before hitting 429."
+  ],
+  "critical_code_review_comments": [
+    "server.py enforce_scan_quota uses find_one_and_update with $inc + upsert + ReturnDocument.AFTER — atomic and race-safe under concurrent scans from the same device. Good.",
+    "client_identity() truncates X-Device-Id to 64 chars and falls back to X-Forwarded-For first hop then client.host — sensible key composition.",
+    "sniff_image_mime() correctly checks JPEG (FF D8 FF), PNG (89 50 4E 47 0D 0A 1A 0A) and WEBP (RIFF....WEBP) magic bytes. GIF/BMP/TIFF/HEIC all correctly rejected with 400.",
+    "GET /api/files/{path} now uses require_user(request) which reads ONLY Authorization header — the previous ?token= query param code path is fully removed. Confirmed by test: request with ?token= is 401.",
+    "CORS middleware: allow_origin_regex=r'https?://(localhost(:\\d+)?|([a-z0-9-]+\\.)*emergentagent\\.com)' with allow_credentials=False — correctly permits only preview subdomains and localhost. Direct-backend test proves regex echoes the exact origin and does not emit credentials header.",
+    "rate_limits collection has TTL index expireAfterSeconds=172800 (48h) on created_at — buckets auto-purge, no manual cleanup needed. Good.",
+    "SCAN_DAILY_LIMIT=50 is a module-level constant; consider moving to env for per-env tuning (dev vs prod). Non-blocking."
+  ],
+  "updated_files": [
+    "/app/backend/tests/backend_test.py (added SEC verification: magic-byte rejection, GIF rejection, X-Device-Id acceptance, 429 shape via pre-seed, files ?token= removal, owner-scoped 404, CORS direct-backend + wildcard-with-creds regression)",
+    "/app/test_reports/iteration_2.json (new)",
+    "/app/test_reports/pytest/pytest_results.xml (regenerated)"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "not tested (per request: backend only)"},
+  "seed_data_creation": "Session-scoped TEST_ user + user_sessions doc (same pattern as iteration_1). test_scan_rate_limit_shape_and_wiring pre-seeds a rate_limits doc with count=9999 for a synthetic X-Device-Id and cleans it up in a finally block, so it never touches real per-day budgets. Real LLM scans made: 3 (anonymous baseline, authenticated save, files-owner happy path).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Reuse /app/backend/tests/backend_test.py. All 23 tests pass under `pytest /app/backend/tests/backend_test.py -v` (pytest.ini already runs -n 2 --dist loadscope). Rate-limit verification uses a synthetic X-Device-Id + DB pre-seed; do NOT change this to real request flooding (each real scan costs LLM $). For CORS tests, expect ingress to rewrite public-URL OPTIONS to allow-origin='*'; the test_cors_direct_backend_regex_echoes_origin test hits http://localhost:8001 directly to verify Starlette regex behavior. Frontend not tested this round (backend-only request); when re-enabling frontend tests confirm that api.ts uses Bearer header for /api/files and that <Image /> tags render via blob/data-uri (not naked file URLs).",
+  "rca_of_issue": "N/A — all security fixes verified working."
+}

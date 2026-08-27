@@ -67,7 +67,10 @@ export default function HistoryScreen() {
       <View style={styles.row} testID={`history-row-${item.id}`}>
         {item.image_path && token ? (
           <Image
-            source={{ uri: `${BACKEND_URL}/api/files/${item.image_path}?token=${token}` }}
+            source={{
+              uri: `${BACKEND_URL}/api/files/${item.image_path}`,
+              headers: { Authorization: `Bearer ${token}` },
+            }}
             style={styles.thumb}
             contentFit="cover"
           />
