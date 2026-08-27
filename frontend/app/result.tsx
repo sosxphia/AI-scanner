@@ -164,9 +164,9 @@ export default function ResultScreen() {
           <Animated.View style={[styles.laser, laserStyle]} />
           <View style={[styles.analyzingWrap, { bottom: insets.bottom + spacing.xxxl }]}>
             <Text style={styles.analyzingText} testID="analyzing-label">
-              ANALYZING_
+              SCANNING...
             </Text>
-            <Text style={styles.analyzingSub}>SCANNING...</Text>
+            <Text style={styles.analyzingSub}>Please Wait</Text>
           </View>
         </>
       )}
