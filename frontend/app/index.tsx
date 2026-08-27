@@ -34,7 +34,6 @@ export default function CameraHome() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [permission, requestPermission] = useCameraPermissions();
-  const [facing, setFacing] = useState<"back" | "front">("back");
   const [capturing, setCapturing] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const cameraRef = useRef<CameraView>(null);
@@ -125,12 +124,14 @@ export default function CameraHome() {
       );
     }
     return (
-      <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing={facing}>
+      <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing="back">
         <View style={styles.reticle} pointerEvents="none">
-          <View style={[styles.corner, styles.cornerTL]} />
-          <View style={[styles.corner, styles.cornerTR]} />
-          <View style={[styles.corner, styles.cornerBL]} />
-          <View style={[styles.corner, styles.cornerBR]} />
+          <View style={styles.reticleBox}>
+            <View style={[styles.corner, styles.cornerTL]} />
+            <View style={[styles.corner, styles.cornerTR]} />
+            <View style={[styles.corner, styles.cornerBL]} />
+            <View style={[styles.corner, styles.cornerBR]} />
+          </View>
         </View>
       </CameraView>
     );
@@ -201,15 +202,12 @@ export default function CameraHome() {
       {/* Bottom controls */}
       <View style={[styles.bottomControls, { bottom: insets.bottom + spacing.xl }]}>
         <Pressable
-          testID="flip-camera-button"
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            setFacing((f) => (f === "back" ? "front" : "back"));
-          }}
-          style={styles.sideButton}
+          testID="gallery-upload-button"
+          onPress={pickFromGallery}
+          style={styles.galleryLeft}
           hitSlop={12}
         >
-          <Ionicons name="camera-reverse-outline" size={26} color={colors.onSurface} />
+          <Ionicons name="images-outline" size={26} color={colors.onSurface} />
         </Pressable>
 
         <Pressable
@@ -221,15 +219,6 @@ export default function CameraHome() {
           <View style={styles.shutterInner}>
             {capturing && <ActivityIndicator color="#FFFFFF" />}
           </View>
-        </Pressable>
-
-        <Pressable
-          testID="gallery-upload-button"
-          onPress={pickFromGallery}
-          style={styles.sideButton}
-          hitSlop={12}
-        >
-          <Ionicons name="images-outline" size={26} color={colors.onSurface} />
         </Pressable>
       </View>
     </View>
@@ -285,7 +274,13 @@ const styles = StyleSheet.create({
   },
   reticle: {
     ...StyleSheet.absoluteFillObject,
-    margin: "18%",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  reticleBox: {
+    width: 280,
+    height: 280,
+    marginBottom: 120,
   },
   corner: {
     position: "absolute",
@@ -381,7 +376,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: spacing.xxl,
+  },
+  galleryLeft: {
+    position: "absolute",
+    left: spacing.xxl,
+    width: 52,
+    height: 52,
+    alignItems: "center",
+    justifyContent: "center",
   },
   shutterOuter: {
     width: 62,
@@ -398,12 +400,6 @@ const styles = StyleSheet.create({
     height: 42,
     borderRadius: 21,
     backgroundColor: "#FF1F1F",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  sideButton: {
-    width: 52,
-    height: 52,
     alignItems: "center",
     justifyContent: "center",
   },

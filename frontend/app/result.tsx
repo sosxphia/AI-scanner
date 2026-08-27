@@ -1,10 +1,11 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
   Pressable,
   StyleSheet,
   Platform,
+  Image as RNImage,
   useWindowDimensions,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -14,6 +15,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
+import { captureRef } from "react-native-view-shot";
+import * as Sharing from "expo-sharing";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -46,6 +49,8 @@ export default function ResultScreen() {
   const [status, setStatus] = useState<"analyzing" | "done" | "error">("analyzing");
   const [result, setResult] = useState<ScanResult | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
+  const [sharing, setSharing] = useState(false);
+  const shareCardRef = useRef<View>(null);
 
   const laser = useSharedValue(0);
 
@@ -112,6 +117,26 @@ export default function ResultScreen() {
 
   const isAi = result?.verdict === "ai";
   const verdictColor = isAi ? colors.brand : colors.success;
+
+  const shareResult = async () => {
+    if (!result || sharing) return;
+    setSharing(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    try {
+      const captureUri = await captureRef(shareCardRef, { format: "png", quality: 1 });
+      const available = await Sharing.isAvailableAsync();
+      if (available) {
+        await Sharing.shareAsync(captureUri, {
+          mimeType: "image/png",
+          dialogTitle: "Share scan result",
+        });
+      }
+    } catch (e) {
+      console.warn("Share failed:", e);
+    } finally {
+      setSharing(false);
+    }
+  };
 
   return (
     <View style={styles.container} testID="scan-result-screen">
@@ -208,6 +233,15 @@ export default function ResultScreen() {
             >
               <Text style={styles.primaryBtnText}>SCAN AGAIN</Text>
             </Pressable>
+            <Pressable
+              testID="share-result-button"
+              style={styles.ghostBtn}
+              onPress={shareResult}
+              disabled={sharing}
+            >
+              <Ionicons name="share-social-outline" size={16} color={colors.onSurface} />
+              <Text style={styles.ghostBtnText}>{sharing ? "PREPARING..." : "SHARE RESULT"}</Text>
+            </Pressable>
             {result.saved && (
               <Pressable
                 testID="view-history-button"
@@ -218,6 +252,34 @@ export default function ResultScreen() {
               </Pressable>
             )}
           </Animated.View>
+        </View>
+      )}
+
+      {/* Off-screen shareable card */}
+      {status === "done" && result && (
+        <View style={styles.shareCardHost} pointerEvents="none">
+          <View ref={shareCardRef} collapsable={false} style={styles.shareCard}>
+            {uri ? (
+              <RNImage source={{ uri }} style={styles.shareImage} resizeMode="cover" />
+            ) : null}
+            <LinearGradient
+              colors={["rgba(13,13,13,0)", "rgba(13,13,13,0.55)", "rgba(13,13,13,0.96)"]}
+              style={styles.shareGradient}
+            />
+            <View style={styles.shareContent}>
+              <Text style={[styles.shareVerdict, { color: verdictColor }]}>
+                {isAi ? "AI GENERATED" : "REAL PHOTO"}
+              </Text>
+              <Text style={[styles.shareConfidence, { color: verdictColor }]}>
+                {result.confidence}%
+              </Text>
+              <Text style={styles.shareCaption}>CONFIDENCE</Text>
+              <View style={styles.shareFooter}>
+                <Ionicons name="scan-outline" size={16} color={colors.brand} />
+                <Text style={styles.shareBrand}>DETECT·AI SCANNER</Text>
+              </View>
+            </View>
+          </View>
         </View>
       )}
     </View>
@@ -385,6 +447,8 @@ const styles = StyleSheet.create({
     borderColor: colors.borderStrong,
     borderRadius: radius.md,
     minHeight: 48,
+    flexDirection: "row",
+    gap: spacing.sm,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -392,6 +456,60 @@ const styles = StyleSheet.create({
     fontFamily: fonts.monoSemiBold,
     fontSize: 13,
     letterSpacing: 2,
+    color: colors.onSurface,
+  },
+  shareCardHost: {
+    position: "absolute",
+    left: -10000,
+    top: 0,
+  },
+  shareCard: {
+    width: 360,
+    height: 480,
+    backgroundColor: colors.surface,
+    overflow: "hidden",
+  },
+  shareImage: {
+    ...StyleSheet.absoluteFillObject,
+    width: "100%",
+    height: "100%",
+  },
+  shareGradient: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  shareContent: {
+    position: "absolute",
+    left: spacing.xl,
+    right: spacing.xl,
+    bottom: spacing.xl,
+  },
+  shareVerdict: {
+    fontFamily: fonts.display,
+    fontSize: 24,
+    letterSpacing: 3,
+  },
+  shareConfidence: {
+    fontFamily: fonts.displayHeavy,
+    fontSize: 72,
+    lineHeight: 78,
+    letterSpacing: -1,
+  },
+  shareCaption: {
+    fontFamily: fonts.mono,
+    fontSize: 11,
+    letterSpacing: 3,
+    color: colors.onSurfaceSecondary,
+  },
+  shareFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+  },
+  shareBrand: {
+    fontFamily: fonts.monoSemiBold,
+    fontSize: 12,
+    letterSpacing: 3,
     color: colors.onSurface,
   },
 });
